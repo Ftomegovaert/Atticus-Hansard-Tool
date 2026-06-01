@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AP Hansard Written Questions Browser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0E1467;
+    --navy-dark: #090e4f;
+    --navy-light: #1a2280;
+    --white: #ffffff;
+    --off-white: #f4f5fb;
+    --border: #dde0f0;
+    --text: #1a1a2e;
+    --text-secondary: #5a5f7a;
+    --answered: #1e6e3a;
+    --answered-bg: #e6f4ea;
+    --unanswered: #8a5a00;
+    --unanswered-bg: #fef3e2;
+    --debate: #1a4a8a;
+    --debate-bg: #e8f0fb;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: var(--off-white);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--navy);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 0.01em;
+  }
+
+  .header-text p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 1px;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--navy);
+    border-radius: 2px;
+  }
+
+  label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+
+  input[type=date], textarea {
+    width: 100%;
+    font-size: 13px;
+    font-family: inherit;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type=date]:focus, textarea:focus { border-color: var(--navy); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .btn:hover { background: var(--off-white); border-color: var(--navy); color: var(--navy); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--navy);
+    color: var(--white);
+    border-color: var(--navy);
+    margin-top: 0.75rem;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary:hover { background: var(--navy-dark); border-color: var(--navy-dark); color: var(--white); }
+  .btn-primary:disabled { background: #999; border-color: #999; }
+
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+
+  .status { font-size: 13px; color: var(--text-secondary); padding: 0.5rem 0; min-height: 28px; }
+  .status.error { color: #c0392b; }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-debate { background: var(--debate-bg); color: var(--debate); }
+  .badge-answered { background: var(--answered-bg); color: var(--answered); }
+  .badge-unanswered { background: var(--unanswered-bg); color: var(--unanswered); }
+
+  .result-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--off-white);
+  }
+
+  .result-item:first-child { border-top: none; }
+  .result-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+  .result-preview { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.5; }
+
+  .result-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+
+  .topic-heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 1.5rem 0 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--navy);
+    letter-spacing: 0.01em;
+  }
+
+  .topic-heading:first-child { margin-top: 0; }
+
+  .section-sublabel {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 1rem 0 0.25rem;
+  }
+
+  .formatted-block {
+    font-size: 13px;
+    line-height: 1.85;
+    background: var(--off-white);
+    border-left: 3px solid var(--navy);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .formatted-block a { color: var(--navy); font-weight: 500; }
+
+  .debate-links-block {
+    font-size: 13px;
+    line-height: 1.85;
+    background: var(--debate-bg);
+    border-left: 3px solid var(--debate);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .debate-links-block a { color: var(--debate); font-weight: 500; }
+
+  .hansard-search-card {
+    background: var(--off-white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .hansard-search-card p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .hansard-search-card a {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--navy);
+    font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid var(--navy);
+    border-radius: 4px;
+    text-decoration: none;
+    margin: 2px 4px 2px 0;
+  }
+
+  .hansard-search-card a:hover { background: var(--navy); color: var(--white); }
+
+  .copy-row { display: flex; gap: 6px; justify-content: flex-end; margin-bottom: 0.75rem; }
+
+  .spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid var(--border);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 5px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .debug-box {
+    font-size: 11px;
+    font-family: monospace;
+    background: #f0f0f0;
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+    color: #444;
+    display: none;
+  }
+
+  #resultsSection, #formatSection { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <!-- Atticus Partners logo (SVG inline) -->
+  <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="50,8 92,82 8,82" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="5" stroke-linejoin="round"/>
+    <polygon points="50,32 68,65 32,65" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="4" stroke-linejoin="round"/>
+  </svg>
+  <div class="header-text">
+    <h1>AP Hansard Written Questions Browser</h1>
+    <p>Search and format Hansard Written Questions</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-label">Step 1 — Search</div>
+    <div class="grid-2">
+      <div><label>Start date</label><input type="date" id="startDate" /></div>
+      <div><label>End date</label><input type="date" id="endDate" /></div>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <label>Keywords (one per line)</label>
+      <textarea id="keywords" rows="7" placeholder="broadband&#10;5G&#10;Open RAN"></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="runSearch()" id="searchBtn">🔍 Search Parliament</button>
+    <div class="status" id="searchStatus"></div>
+    <div class="debug-box" id="debugBox"></div>
+  </div>
+
+  <div class="card" id="resultsSection">
+    <div class="card-label">Step 2 — Review hits</div>
+    <div class="result-actions">
+      <span id="resultCount" style="font-size:13px;color:var(--text-secondary);"></span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" onclick="selectAll(true)">Select all</button>
+        <button class="btn" onclick="selectAll(false)">Clear</button>
+      </div>
+    </div>
+    <div id="resultsList"></div>
+    <button class="btn btn-primary" onclick="formatSelected()">✨ Format selected</button>
+  </div>
+
+  <div class="card" id="formatSection">
+    <div class="card-label">Step 3 — Formatted briefing</div>
+    <div class="copy-row">
+      <button class="btn" onclick="copyMarkdown()" id="copyMdBtn">📋 Copy markdown</button>
+      <button class="btn" onclick="copyPlain()" id="copyPlainBtn">📋 Copy plain text</button>
+    </div>
+    <div class="status" id="formatStatus"></div>
+    <div id="formattedOutput"></div>
+  </div>
+
+</div>
+
+<script>
+const PRESETS = {
+  telecoms: [
+    '5G','6G','broadband','fibre rollout','gigabit','spectrum',
+    'mobile networks','Open RAN','digital infrastructure','network resilience',
+    'telecoms regulation','small cells','private networks','edge computing',
+    'STEM skills','digital skills'
+  ].join('\n'),
+  socialmedia: [
+    'online safety','social media','Online Safety Act','Ofcom',
+    'age verification','harmful content','disinformation','deepfake',
+    'online fraud','digital markets','platform regulation','content moderation',
+    'children online','online anonymity'
+  ].join('\n'),
+  consumergoods: [
+    'consumer protection','product safety','supply chain','advertising standards',
+    'packaging regulation','sustainability','carbon footprint','single use plastic',
+    'trading standards','competition policy','import duties','retail regulation'
+  ].join('\n')
+};
+
+let allResults = [];
+let formattedGroups = {};
+
+function loadPreset(name) { document.getElementById('keywords').value = PRESETS[name] || ''; }
+
+function setLastWeek() {
+  const end = new Date(), start = new Date();
+  start.setDate(end.getDate() - 7);
+  document.getElementById('endDate').value = end.toISOString().split('T')[0];
+  document.getElementById('startDate').value = start.toISOString().split('T')[0];
+}
+
+function setLastMonth() {
+  const end = new Date(), start = new Date();
+  start.setDate(end.getDate() - 30);
+  document.getElementById('endDate').value = end.toISOString().split('T')[0];
+  document.getElementById('startDate').value = start.toISOString().split('T')[0];
+}
+
+function setSearchStatus(msg, spinning, isError) {
+  const el = document.getElementById('searchStatus');
+  el.className = 'status' + (isError ? ' error' : '');
+  el.innerHTML = spinning ? `<span class="spinner"></span>${msg}` : msg;
+}
+
+function debug(msg) {
+  const box = document.getElementById('debugBox');
+  box.style.display = 'block';
+  box.textContent += msg + '\n';
+}
+
+function stripHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function extractName(member) {
+  if (!member) return '';
+  return member.name || member.Name || member.displayName || member.DisplayName || '';
+}
+
+function extractParty(member) {
+  if (!member) return '';
+  return member.party || member.Party || member.partyName || member.PartyName || '';
+}
+
+function extractConstituency(member) {
+  if (!member) return '';
+  return member.memberFrom || member.MemberFrom || member.constituency || member.Constituency || '';
+}
+
+async function fetchFullQuestion(id) {
+  try {
+    const res = await fetch(`https://questions-statements-api.parliament.uk/api/writtenquestions/questions/${id}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value || null;
+  } catch(e) { return null; }
+}
+
+async function searchWrittenQuestions(keyword, startDate, endDate) {
+  // Fetch all pages for both tabled and answered searches
+  async function fetchAllPages(params) {
+    const PAGE_SIZE = 100;
+    params.set('take', PAGE_SIZE);
+    params.set('skip', 0);
+    let all = [];
+    while (true) {
+      const res = await fetch(`https://questions-statements-api.parliament.uk/api/writtenquestions/questions?${params}`);
+      if (!res.ok) break;
+      const data = await res.json();
+      const results = data.results || [];
+      all = all.concat(results);
+      if (results.length < PAGE_SIZE) break; // no more pages
+      params.set('skip', all.length);
+    }
+    return all;
+  }
+
+  const paramsTabled = new URLSearchParams({
+    searchTerm: keyword, tabledWhenFrom: startDate, tabledWhenTo: endDate,
+    skip: 0, expandMember: true
+  });
+  const paramsAnswered = new URLSearchParams({
+    searchTerm: keyword, answeredWhenFrom: startDate, answeredWhenTo: endDate,
+    skip: 0, expandMember: true
+  });
+
+  const [dataTabled, dataAnswered] = await Promise.all([
+    fetchAllPages(paramsTabled),
+    fetchAllPages(paramsAnswered)
+  ]);
+
+  const seenIds = new Set();
+  const combined = [];
+  for (const r of [...dataTabled, ...dataAnswered]) {
+    const v = r.value || r;
+    const rid = v.id || v.Id || '';
+    if (rid && seenIds.has(rid)) continue;
+    if (rid) seenIds.add(rid);
+    combined.push(v);
+  }
+
+  if (combined.length === 0) { debug(`WQ "${keyword}": 0 results`); return []; }
+
+  return combined.map(v => {
+    const asking = v.askingMember || v.AskingMember || {};
+    const answered = !!(v.dateAnswered || v.DateAnswered || v.isWithdrawn);
+    const dateTabled = (v.dateTabled || v.DateTabled || '').split('T')[0];
+    const dateForAnswer = (v.dateForAnswer || v.DateForAnswer || '').split('T')[0];
+    const uin = v.uin || v.Uin || '';
+    const internalId = v.id || v.Id || '';
+    return {
+      type: answered ? 'Answered' : 'Unanswered',
+      source: 'written_question', keyword,
+      id: uin, internalId,
+      questionText: stripHtml(v.questionText || v.QuestionText || ''),
+      answerText: '',
+      askerName: extractName(asking),
+      askerParty: extractParty(asking),
+      askerConstituency: extractConstituency(asking),
+      answererName: '', answererTitle: '',
+      dateTabled, dateForAnswer,
+      url: uin && dateTabled
+        ? `https://questions-statements.parliament.uk/written-questions/detail/${dateTabled}/${uin}`
+        : ''
+    };
+  });
+}
+
+// Hansard: generate pre-filtered search links per keyword — direct API blocked by CORS
+function getHansardSearchLinks(keyword, startDate, endDate) {
+  const base = 'https://hansard.parliament.uk/search/contributions';
+  const params = `searchTerm=${encodeURIComponent(keyword)}&startDate=${startDate}&endDate=${endDate}`;
+  return {
+    commons: `${base}?${params}&house=Commons`,
+    lords: `${base}?${params}&house=Lords`
+  };
+}
+
+async function runSearch() {
+  const keywordsRaw = document.getElementById('keywords').value.trim();
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  if (!keywordsRaw || !startDate || !endDate) {
+    setSearchStatus('Please enter keywords and a date range.', false, false);
+    return;
+  }
+
+  const keywords = keywordsRaw.split('\n').map(k => k.trim()).filter(Boolean);
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('formatSection').style.display = 'none';
+  document.getElementById('debugBox').style.display = 'none';
+  document.getElementById('debugBox').textContent = '';
+  allResults = [];
+  const seen = new Set();
+
+  const BATCH_SIZE = 3;
+  for (let i = 0; i < keywords.length; i += BATCH_SIZE) {
+    const batch = keywords.slice(i, i + BATCH_SIZE);
+    setSearchStatus(`Searching ${Math.min(i + BATCH_SIZE, keywords.length)}/${keywords.length} keywords...`, true, false);
+    const batchResults = await Promise.all(
+      batch.map(kw =>
+        searchWrittenQuestions(kw, startDate, endDate)
+          .catch(e => { debug('WQ error: ' + e.message); return []; })
+      )
+    );
+    for (const wqs of batchResults) {
+      wqs.forEach(r => {
+        const key = r.url + (r.questionText || '').substring(0, 60);
+        if (!seen.has(key)) { seen.add(key); allResults.push(r); }
+      });
+    }
+  }
+
+  allResults.sort((a, b) => (b.dateTabled || '').localeCompare(a.dateTabled || ''));
+  document.getElementById('searchBtn').disabled = false;
+  setSearchStatus('', false, false);
+  renderResults(keywords, startDate, endDate);
+}
+
+function renderResults(keywords, startDate, endDate) {
+  const section = document.getElementById('resultsSection');
+  const list = document.getElementById('resultsList');
+  document.getElementById('resultCount').textContent =
+    `${allResults.length} written question${allResults.length !== 1 ? 's' : ''} found`;
+
+  let html = '';
+
+  if (allResults.length === 0) {
+    html = `<p style="font-size:13px;color:var(--text-secondary);padding:0.5rem 0;">No written questions found. Try a broader date range or different keywords.</p>`;
+  } else {
+    html = allResults.map((r, i) => {
+      const badgeClass = r.type === 'Answered' ? 'badge-answered' : 'badge-unanswered';
+      const name = (r.askerName || 'Unknown MP') + (r.askerParty ? ` · ${r.askerParty}` : '');
+      const meta = [r.dateTabled, r.askerConstituency, r.keyword].filter(Boolean).join(' · ');
+      return `<div class="result-item">
+        <input type="checkbox" id="chk${i}" data-idx="${i}" checked style="margin-top:3px;flex-shrink:0;" />
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+            <span class="badge ${badgeClass}">${r.type}</span>
+            <strong style="font-size:13px;">${name}</strong>
+          </div>
+          <div class="result-meta">${meta}</div>
+          ${r.questionText ? `<div class="result-preview">${r.questionText}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Hansard debate search links section
+  if (keywords && keywords.length > 0) {
+    html += `<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:0.5rem;">Hansard Debate Search Links</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:0.75rem;">The Hansard debates API cannot be queried directly from the browser. Use these pre-filtered links to check each keyword in Hansard manually — each opens the relevant Commons and Lords results for your date range.</p>`;
+    keywords.forEach(kw => {
+      const links = getHansardSearchLinks(kw, startDate, endDate);
+      html += `<div style="margin-bottom:0.5rem;">
+        <span style="font-size:12px;font-weight:500;color:var(--text);margin-right:8px;">${kw}</span>
+        <a href="${links.commons}" target="_blank" style="font-size:12px;color:var(--navy);font-weight:500;margin-right:6px;text-decoration:none;padding:2px 8px;border:1px solid var(--navy);border-radius:4px;">Commons ↗</a>
+        <a href="${links.lords}" target="_blank" style="font-size:12px;color:var(--navy);font-weight:500;text-decoration:none;padding:2px 8px;border:1px solid var(--navy);border-radius:4px;">Lords ↗</a>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  list.innerHTML = html;
+  section.style.display = 'block';
+
+  // Store keywords/dates for use at format time
+  section.dataset.keywords = JSON.stringify(keywords);
+  section.dataset.startDate = startDate;
+  section.dataset.endDate = endDate;
+}
+
+function selectAll(checked) {
+  document.querySelectorAll('#resultsList input[type=checkbox]').forEach(cb => cb.checked = checked);
+}
+
+function getSelected() {
+  return Array.from(document.querySelectorAll('#resultsList input[type=checkbox]:checked'))
+    .map(cb => allResults[parseInt(cb.dataset.idx)]);
+}
+
+function formatWQ(r) {
+  const asker = r.askerName ? `${r.askerName} MP` : 'Unknown MP';
+  const details = [r.askerParty, r.askerConstituency].filter(Boolean).join(', ');
+  const askerStr = details ? `${asker} (${details})` : asker;
+  const linkPart = r.url ? `[submitted](${r.url})` : `submitted [Link may be invalid — UIN or date missing]`;
+
+  let out = `• ${askerStr} ${linkPart} a written question asking: "${r.questionText}"\n`;
+
+  if (r.type === 'Answered') {
+    const answerer = r.answererName || 'Minister';
+    const title = r.answererTitle ? ` (${r.answererTitle})` : '';
+    const answerText = r.answerText || '[Answer text not retrieved — view full record via link]';
+    const textWarning = r.fullTextFailed ? ' [Full text unavailable — truncated version shown]' : '';
+    out += `• ${answerer}${title} replied: "${answerText}"${textWarning}`;
+  } else {
+    out += `• This question is due for answer by ${r.dateForAnswer || 'date unknown'}`;
+  }
+  return out;
+}
+
+async function formatSelected() {
+  const selected = getSelected();
+  if (!selected.length) { alert('Select at least one result.'); return; }
+
+  document.getElementById('formatSection').style.display = 'block';
+  document.getElementById('formattedOutput').innerHTML = '';
+  const formatStatus = document.getElementById('formatStatus');
+  formatStatus.innerHTML = `<span class="spinner"></span>Fetching full text for ${selected.length} question${selected.length !== 1 ? 's' : ''}...`;
+
+  const enriched = await Promise.all(
+    selected.map(async r => {
+      if (!r.internalId) return { ...r, fullTextFailed: true };
+      const full = await fetchFullQuestion(r.internalId);
+      if (!full) return { ...r, fullTextFailed: true };
+      const asking = full.askingMember || full.AskingMember || {};
+      const answerObj = full.answer || full.Answer || {};
+      const answering = full.answeringMember || full.AnsweringMember || {};
+      const answeringFull = answering.name ? answering : answerObj.answeringMember || answerObj.AnsweringMember || answering;
+      const uin = full.uin || full.Uin || r.id || '';
+      const dateTabled = (full.dateTabled || full.DateTabled || r.dateTabled || '').split('T')[0];
+      const url = uin && dateTabled
+        ? `https://questions-statements.parliament.uk/written-questions/detail/${dateTabled}/${uin}`
+        : '';
+      return {
+        ...r, url,
+        questionText: stripHtml(full.questionText || full.QuestionText || r.questionText || ''),
+        answerText: stripHtml(answerObj.answerText || answerObj.AnswerText || full.answerText || full.AnswerText || ''),
+        askerName: extractName(asking) || r.askerName,
+        askerParty: extractParty(asking) || r.askerParty,
+        askerConstituency: extractConstituency(asking) || r.askerConstituency,
+        answererName: extractName(answeringFull),
+        answererTitle: full.answeringBodyName || full.AnsweringBodyName || answerObj.answeringBodyName || '',
+        fullTextFailed: false
+      };
+    })
+  );
+
+  const grouped = {};
+  enriched.forEach(r => {
+    if (!grouped[r.keyword]) grouped[r.keyword] = [];
+    grouped[r.keyword].push(r);
+  });
+
+  formattedGroups = {};
+  const outputEl = document.getElementById('formattedOutput');
+
+  // Retrieve stored keywords and dates for Hansard links
+  const section = document.getElementById('resultsSection');
+  const allKeywords = JSON.parse(section.dataset.keywords || '[]');
+  const startDate = section.dataset.startDate || '';
+  const endDate = section.dataset.endDate || '';
+
+  for (const [keyword, wqs] of Object.entries(grouped)) {
+    const wqFormatted = wqs.map(formatWQ).join('\n\n');
+    const hansardLinks = getHansardSearchLinks(keyword, startDate, endDate);
+    const debateText = `• Commons debates — ${hansardLinks.commons}\n• Lords debates — ${hansardLinks.lords}`;
+
+    formattedGroups[keyword] = { wqFormatted, debateText, hansardLinks };
+
+    const topicDiv = document.createElement('div');
+    let inner = `<div class="topic-heading">${keyword}</div>`;
+
+    if (wqFormatted) {
+      inner += `<div class="section-sublabel">Written Questions</div>`;
+      inner += `<div class="formatted-block">${renderMarkdownLinks(escapeHtml(wqFormatted))}</div>`;
+    }
+
+
+
+    topicDiv.innerHTML = inner;
+    outputEl.appendChild(topicDiv);
+  }
+
+  formatStatus.textContent = '✓ Done';
+}
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdownLinks(str) {
+  return str.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+}
+
+function getFullMarkdown() {
+  return Object.entries(formattedGroups).map(([k, { wqFormatted }]) => {
+    let out = `## ${k}\n\n`;
+    if (wqFormatted) out += `### Written Questions\n\n${wqFormatted}\n\n`;
+    return out.trim();
+  }).join('\n\n---\n\n');
+}
+
+function getFullPlain() {
+  return Object.entries(formattedGroups).map(([k, { wqFormatted }]) => {
+    let out = `${k.toUpperCase()}\n\n`;
+    if (wqFormatted) out += `Written Questions\n\n${wqFormatted.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')}\n\n`;
+    return out.trim();
+  }).join('\n\n---\n\n');
+}
+
+function copyMarkdown() {
+  navigator.clipboard.writeText(getFullMarkdown()).then(() => {
+    const btn = document.getElementById('copyMdBtn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function copyPlain() {
+  navigator.clipboard.writeText(getFullPlain()).then(() => {
+    const btn = document.getElementById('copyPlainBtn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+setLastWeek();
+</script>
+</body>
+</html>
